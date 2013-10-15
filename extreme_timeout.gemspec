@@ -2,11 +2,11 @@
 Gem::Specification.new do |spec|
   spec.name          = "extreme_timeout"
   spec.version       = "0.1.0"
-  spec.authors       = ["Masaya Suzuki"]
-  spec.email         = ["masaya-suzuki@cookpad.com"]
-  spec.description   = ""
-  spec.summary       = ""
-  spec.homepage      = ""
+  spec.authors       = ["Masaya SUZUKI"]
+  spec.email         = ["draftcode@gmail.com"]
+  spec.description   = "Timeout from the outside of the GVL"
+  spec.summary       = "Timeout from the outside of the GVL"
+  spec.homepage      = "https://github.com/draftcode/extreme_timeout"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
