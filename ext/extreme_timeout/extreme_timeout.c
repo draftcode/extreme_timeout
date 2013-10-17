@@ -14,7 +14,7 @@ sleep_thread_main(void *_arg)
 {
     struct wait_args *arg = _arg;
     sleep(arg->timeout_sec);
-    rb_bug("Process exits(ExtremeTimeout::timeout)");
+    fprintf(stderr, "Process exits(ExtremeTimeout::timeout)");
     exit(arg->exitcode);
 }
 
