@@ -1,7 +1,7 @@
 # coding: utf-8
 Gem::Specification.new do |spec|
   spec.name          = "extreme_timeout"
-  spec.version       = "0.2.0"
+  spec.version       = "0.2.1"
   spec.authors       = ["Masaya SUZUKI"]
   spec.email         = ["draftcode@gmail.com"]
   spec.description   = "Timeout from the outside of the GVL"
