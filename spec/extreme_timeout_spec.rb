@@ -70,7 +70,7 @@ describe ExtremeTimeout do
       end
       Timeout.timeout(3) do
         Process.waitpid(pid)
-        expect(stderr.read).to eq("Process exits(ExtremeTimeout::timeout)\n")
+        expect(stderr.read).to start_with("Process exits(ExtremeTimeout::timeout)\n")
       end
     end
   end

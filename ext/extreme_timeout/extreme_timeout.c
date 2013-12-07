@@ -3,11 +3,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#include <execinfo.h>
 
 struct wait_args {
     unsigned int timeout_sec;
     int exitcode;
+    pthread_t running_thread;
 };
+
+static void
+stacktrace_dumper(int signum)
+{
+    #define MAX_TRACES 1024
+    static void *trace[MAX_TRACES];
+    int n;
+
+    n = backtrace(trace, MAX_TRACES);
+    fprintf(stderr,
+            "-- C level backtrace -----------------------------------------\n");
+    backtrace_symbols_fd(trace, n, STDERR_FILENO);
+    pthread_exit(0);
+}
+
+static void
+set_stacktrace_dumper(void)
+{
+    struct sigaction sa;
+    sigfillset(&sa.sa_mask);
+    sa.sa_handler = stacktrace_dumper;
+    sigaction(SIGCONT, &sa, NULL);
+}
 
 void *
 sleep_thread_main(void *_arg)
@@ -16,6 +42,12 @@ sleep_thread_main(void *_arg)
     sleep(arg->timeout_sec);
     fprintf(stderr, "Process exits(ExtremeTimeout::timeout)\n");
     fflush(stderr);
+
+    set_stacktrace_dumper();
+    if (pthread_kill(arg->running_thread, SIGCONT) == 0) {
+        pthread_join(arg->running_thread, NULL);
+    }
+
     exit(arg->exitcode);
 }
 
@@ -50,6 +82,7 @@ timeout(int argc, VALUE *argv, VALUE self)
 
     arg.timeout_sec = timeout_sec;
     arg.exitcode = exitcode;
+    arg.running_thread = pthread_self();
     if (pthread_create(&thread, NULL, sleep_thread_main, &arg) != 0) {
         rb_raise(rb_eRuntimeError, "pthread_create was failed");
     }
