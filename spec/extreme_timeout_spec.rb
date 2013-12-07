@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'extreme_timeout'
 
 describe ExtremeTimeout do
   describe '.timeout' do
@@ -32,14 +31,47 @@ describe ExtremeTimeout do
       expect { ExtremeTimeout::timeout(3) }.to raise_error(ArgumentError)
     end
 
+    def redirectio_fork(&block)
+      stdout_r, stdout_w = IO.pipe
+      stderr_r, stderr_w = IO.pipe
+      pid = fork do
+        $stdout.reopen(stdout_w)
+        $stderr.reopen(stderr_w)
+        block.call
+      end
+      stdout_w.close
+      stderr_w.close
+      return pid, stdout_r, stderr_r
+    end
+
     it 'exits the process when timeout' do
-      pending "This test will terminate the whole rspec process"
-      ExtremeTimeout::timeout(1) { sleep }
+      pid, = redirectio_fork do
+        ExtremeTimeout::timeout(1) { sleep }
+      end
+      Timeout.timeout(3) do
+        pid, status = Process.waitpid2(pid)
+        expect(status.exitstatus).to eq(1)
+      end
     end
 
     it 'exits the process with the exit code specified when timeout' do
-      pending "This test will terminate the whole rspec process"
-      ExtremeTimeout::timeout(1, 5) { sleep }
+      pid, = redirectio_fork do
+        ExtremeTimeout::timeout(1, 5) { sleep }
+      end
+      Timeout.timeout(3) do
+        pid, status = Process.waitpid2(pid)
+        expect(status.exitstatus).to eq(5)
+      end
+    end
+
+    it 'outputs timeout message to stderr' do
+      pid, stdout, stderr = redirectio_fork do
+        ExtremeTimeout::timeout(1) { sleep }
+      end
+      Timeout.timeout(3) do
+        Process.waitpid(pid)
+        expect(stderr.read).to eq("Process exits(ExtremeTimeout::timeout)\n")
+      end
     end
   end
 end
