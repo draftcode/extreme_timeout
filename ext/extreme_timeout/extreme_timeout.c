@@ -18,6 +18,13 @@ stacktrace_dumper(int signum)
     #define MAX_TRACES 1024
     static void *trace[MAX_TRACES];
     int n;
+    VALUE backtrace_arr;
+
+    backtrace_arr = rb_make_backtrace();
+    fprintf(stderr,
+            "-- Ruby level backtrace --------------------------------------\n");
+    rb_io_puts(1, &backtrace_arr, rb_stderr);
+    fprintf(stderr, "\n");
 
     n = backtrace(trace, MAX_TRACES);
     fprintf(stderr,
