@@ -4,6 +4,9 @@
 # loaded once.
 #
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
+require 'extreme_timeout'
+require 'timeout'
+
 ext = File.expand_path('../../ext', __FILE__)
 $LOAD_PATH.unshift(ext) unless $LOAD_PATH.include?(ext)
 RSpec.configure do |config|
