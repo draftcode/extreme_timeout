@@ -4,7 +4,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include <execinfo.h>
+#if defined(HAVE_BACKTRACE) && !defined(__APPLE__)
+# include <execinfo.h>
+#endif
+
+static pthread_mutex_t exitcode_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int exitcode;
 
 struct wait_args {
     unsigned int timeout_sec;
@@ -26,11 +31,19 @@ stacktrace_dumper(int signum)
     rb_io_puts(1, &backtrace_arr, rb_stderr);
     fprintf(stderr, "\n");
 
-    n = backtrace(trace, MAX_TRACES);
     fprintf(stderr,
             "-- C level backtrace -----------------------------------------\n");
+#if defined(HAVE_BACKTRACE) && !defined(__APPLE__)
+    n = backtrace(trace, MAX_TRACES);
     backtrace_symbols_fd(trace, n, STDERR_FILENO);
-    pthread_exit(0);
+#elif defined(HAVE_BACKTRACE) && defined(__APPLE__)
+    fprintf(stderr,
+            "C level backtrace is unavailable due to the bug in the OSX's environment.\nSee r39301 and r39808 of CRuby for the details.\n");
+#else
+    fprintf(stderr,
+            "C level backtrace is unavailable because backtrace(3) is unavailable.\n")
+#endif
+    exit(exitcode);
 }
 
 static void
@@ -50,12 +63,13 @@ sleep_thread_main(void *_arg)
     fprintf(stderr, "Process exits(ExtremeTimeout::timeout)\n");
     fflush(stderr);
 
+    pthread_mutex_lock(&exitcode_mutex);
+    exitcode = arg->exitcode;
     set_stacktrace_dumper();
     if (pthread_kill(arg->running_thread, SIGCONT) == 0) {
         pthread_join(arg->running_thread, NULL);
     }
-
-    exit(arg->exitcode);
+    return NULL;
 }
 
 VALUE
