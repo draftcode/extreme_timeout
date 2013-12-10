@@ -3,11 +3,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#if defined(HAVE_BACKTRACE) && !defined(__APPLE__)
+# include <execinfo.h>
+#endif
+
+static pthread_mutex_t exitcode_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int exitcode;
 
 struct wait_args {
     unsigned int timeout_sec;
     int exitcode;
+    pthread_t running_thread;
 };
+
+static void
+stacktrace_dumper(int signum)
+{
+    #define MAX_TRACES 1024
+    static void *trace[MAX_TRACES];
+    int n;
+    VALUE backtrace_arr;
+
+    backtrace_arr = rb_make_backtrace();
+    fprintf(stderr,
+            "-- Ruby level backtrace --------------------------------------\n");
+    rb_io_puts(1, &backtrace_arr, rb_stderr);
+    fprintf(stderr, "\n");
+
+    fprintf(stderr,
+            "-- C level backtrace -----------------------------------------\n");
+#if defined(HAVE_BACKTRACE) && !defined(__APPLE__)
+    n = backtrace(trace, MAX_TRACES);
+    backtrace_symbols_fd(trace, n, STDERR_FILENO);
+#elif defined(HAVE_BACKTRACE) && defined(__APPLE__)
+    fprintf(stderr,
+            "C level backtrace is unavailable due to the bug in the OSX's environment.\nSee r39301 and r39808 of CRuby for the details.\n");
+#else
+    fprintf(stderr,
+            "C level backtrace is unavailable because backtrace(3) is unavailable.\n")
+#endif
+    exit(exitcode);
+}
+
+static void
+set_stacktrace_dumper(void)
+{
+    struct sigaction sa;
+    sigfillset(&sa.sa_mask);
+    sa.sa_handler = stacktrace_dumper;
+    sigaction(SIGCONT, &sa, NULL);
+}
 
 void *
 sleep_thread_main(void *_arg)
@@ -16,7 +62,14 @@ sleep_thread_main(void *_arg)
     sleep(arg->timeout_sec);
     fprintf(stderr, "Process exits(ExtremeTimeout::timeout)\n");
     fflush(stderr);
-    exit(arg->exitcode);
+
+    pthread_mutex_lock(&exitcode_mutex);
+    exitcode = arg->exitcode;
+    set_stacktrace_dumper();
+    if (pthread_kill(arg->running_thread, SIGCONT) == 0) {
+        pthread_join(arg->running_thread, NULL);
+    }
+    return NULL;
 }
 
 VALUE
@@ -50,6 +103,7 @@ timeout(int argc, VALUE *argv, VALUE self)
 
     arg.timeout_sec = timeout_sec;
     arg.exitcode = exitcode;
+    arg.running_thread = pthread_self();
     if (pthread_create(&thread, NULL, sleep_thread_main, &arg) != 0) {
         rb_raise(rb_eRuntimeError, "pthread_create was failed");
     }
