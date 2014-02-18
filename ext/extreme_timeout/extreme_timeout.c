@@ -65,9 +65,13 @@ sleep_thread_main(void *_arg)
 
     pthread_mutex_lock(&exitcode_mutex);
     exitcode = arg->exitcode;
-    set_stacktrace_dumper();
-    if (pthread_kill(arg->running_thread, SIGCONT) == 0) {
-        pthread_join(arg->running_thread, NULL);
+    if (!rb_during_gc()) {
+      set_stacktrace_dumper();
+      if (pthread_kill(arg->running_thread, SIGCONT) == 0) {
+          pthread_join(arg->running_thread, NULL);
+      }
+    } else {
+      exit(exitcode);
     }
     return NULL;
 }
