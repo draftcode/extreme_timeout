@@ -76,10 +76,16 @@ sleep_thread_main(void *_arg)
     return NULL;
 }
 
+static VALUE
+timeout_cb(VALUE block)
+{
+    return rb_funcall(block, rb_intern("call"), 0);
+}
+
 VALUE
 timeout(int argc, VALUE *argv, VALUE self)
 {
-    int exitcode = 1;
+    int exitcode = 1, state;
     unsigned int timeout_sec = 0;
     VALUE timeout_sec_value, exitcode_value, block;
     pthread_t thread;
@@ -112,7 +118,7 @@ timeout(int argc, VALUE *argv, VALUE self)
         rb_raise(rb_eRuntimeError, "pthread_create was failed");
     }
 
-    retval = rb_funcall(block, rb_intern("call"), 0);
+    retval = rb_protect(timeout_cb, block, &state);
 
     pthread_cancel(thread);
     pthread_join(thread, NULL);
