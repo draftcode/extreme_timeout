@@ -73,5 +73,14 @@ describe ExtremeTimeout do
         expect(stderr.read).to start_with("Process exits(ExtremeTimeout::timeout)\n")
       end
     end
+
+    it 'discards timeout if an exception was raised' do
+      begin
+        ExtremeTimeout::timeout(1) { raise Exception.new }
+        fail 'An exception should be raised'
+      rescue Exception
+        sleep(5)
+      end
+    end
   end
 end
