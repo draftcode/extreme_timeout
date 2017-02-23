@@ -82,7 +82,7 @@ timeout_cb(VALUE block)
     return rb_funcall(block, rb_intern("call"), 0);
 }
 
-VALUE
+static VALUE
 timeout(int argc, VALUE *argv, VALUE self)
 {
     int exitcode = 1, state;
