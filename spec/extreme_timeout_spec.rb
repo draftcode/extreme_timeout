@@ -14,13 +14,13 @@ describe ExtremeTimeout do
     it 'does not execute the block when it raise an ArgumentError' do
       executed = false
       expect { ExtremeTimeout::timeout('10') { executed = true } }.to raise_error(ArgumentError)
-      expect(executed).to be_false
+      expect(executed).to be_falsey
     end
 
     it 'executes block' do
       executed = false
       ExtremeTimeout::timeout(10) { executed = true }
-      expect(executed).to be_true
+      expect(executed).to be_truthy
     end
 
     it 'returns the block return value' do
