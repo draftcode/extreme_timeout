@@ -82,7 +82,11 @@ timeout_cb(VALUE block)
     return rb_funcall(block, rb_intern("call"), 0);
 }
 
-VALUE
+/*
+ * NOTE: Exposing this function name "timeout" caused segmentation
+ * fault in some environment (See PR #6).
+ */
+static VALUE
 timeout(int argc, VALUE *argv, VALUE self)
 {
     int exitcode = 1, state;
